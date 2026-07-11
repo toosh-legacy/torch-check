@@ -15,6 +15,23 @@ from .metrics import higher_is_better
 CORRECTNESS_COL = "accuracy"
 
 
+def _df_to_md(df: pd.DataFrame, floatfmt: str = ".4f") -> str:
+    """Render a DataFrame as a GitHub markdown table (no tabulate dep)."""
+    def fmt(v):
+        if isinstance(v, float):
+            return format(v, floatfmt)
+        return str(v)
+
+    cols = list(df.columns)
+    header = "| " + " | ".join(cols) + " |"
+    sep = "| " + " | ".join("---" for _ in cols) + " |"
+    rows = [
+        "| " + " | ".join(fmt(v) for v in row) + " |"
+        for row in df.itertuples(index=False, name=None)
+    ]
+    return "\n".join([header, sep, *rows])
+
+
 @dataclass
 class RegressionReport:
     """Comparison of a candidate run against a baseline run.
@@ -76,11 +93,11 @@ class RegressionReport:
         ]
         tbl = self.metrics.copy()
         tbl["regressed"] = tbl["regressed"].map({True: "yes", False: ""})
-        lines.append(tbl.to_markdown(index=False, floatfmt=".4f"))
+        lines.append(_df_to_md(tbl))
         ni = self.newly_incorrect()
         lines += ["", f"## Per-sample flips (correct -> incorrect): {len(ni)}", ""]
         if len(ni):
-            lines.append(ni.head(20).to_markdown(index=False))
+            lines.append(_df_to_md(ni.head(20)))
         else:
             lines.append("_none_")
         return "\n".join(lines)

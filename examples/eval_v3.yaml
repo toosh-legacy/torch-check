@@ -1,0 +1,17 @@
+# Under-trained candidate checkpoint (the deliberate regression).
+model:
+  target: examples.digits_pipeline:build_model
+  checkpoint: examples/checkpoints/digits_v3.pt
+dataloader:
+  target: examples.digits_pipeline:test_loader
+  args: { batch_size: 256 }
+metrics:
+  - { name: accuracy }
+  - { name: f1, args: { average: macro } }
+  - { name: precision, args: { average: macro } }
+  - { name: recall, args: { average: macro } }
+  - { name: top_k_accuracy, args: { k: 3 } }
+device: cpu
+tag: checkpoint_v3
+notes: "2 epochs, under-trained"
+store: .torchcheck

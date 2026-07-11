@@ -22,6 +22,9 @@ class EvalResult:
     summary: pd.Series
     per_sample: Optional[pd.DataFrame] = None
     meta: dict[str, Any] = field(default_factory=dict)
+    # Non-scalar metric outputs (e.g. ConfusionMatrix -> DataFrame), keyed
+    # by metric name. Not persisted to the SQL summary; in-memory only.
+    artifacts: dict[str, Any] = field(default_factory=dict)
     # Back-reference to the store, set by Evaluator.run so compare_to() works.
     _store: Any = field(default=None, repr=False, compare=False)
 

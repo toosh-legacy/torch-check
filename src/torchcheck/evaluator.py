@@ -136,7 +136,14 @@ class Evaluator:
         outputs, targets, inference_seconds = self._collect()
         n = int(len(targets))
 
-        summary = {m.name: m.compute(outputs, targets) for m in self.metrics}
+        summary = {}
+        artifacts = {}
+        for m in self.metrics:
+            value = m.compute(outputs, targets)
+            if getattr(m, "scalar", True):
+                summary[m.name] = value
+            else:
+                artifacts[m.name] = value
         summary_series = pd.Series(summary, name=tag)
 
         per_sample = self._build_per_sample(outputs, targets)
@@ -151,7 +158,9 @@ class Evaluator:
             "inference_seconds": inference_seconds,
             "throughput_samples_per_sec": throughput,
         }
-        result = EvalResult(summary=summary_series, per_sample=per_sample, meta=meta)
+        result = EvalResult(
+            summary=summary_series, per_sample=per_sample, meta=meta, artifacts=artifacts
+        )
         result._store = self.store  # let result.compare_to() reach the store
 
         if persist and self.store is not None:
