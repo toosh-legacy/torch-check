@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import time
 from datetime import datetime, timezone
-from typing import Any, Iterable, Optional, Sequence
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Sequence
 
 import numpy as np
 import pandas as pd
@@ -12,6 +13,9 @@ import torch
 
 from .metrics import Metric, _to_labels
 from .result import EvalResult
+
+if TYPE_CHECKING:
+    from .store import RunStore
 
 
 def _resolve_device(device: Optional[str]) -> torch.device:
@@ -57,6 +61,7 @@ class Evaluator:
         dataloader: Iterable,
         metrics: Sequence[Metric],
         device: Optional[str] = None,
+        store: "Optional[RunStore | str]" = None,
     ):
         if not metrics:
             raise ValueError("at least one metric is required")
@@ -64,6 +69,15 @@ class Evaluator:
         self.dataloader = dataloader
         self.metrics = list(metrics)
         self.device = _resolve_device(device)
+        # store=None -> default on-disk store; store=False -> no persistence.
+        from .store import RunStore
+
+        if store is False:
+            self.store = None
+        elif store is None or isinstance(store, (str, Path)):
+            self.store = RunStore(store) if isinstance(store, (str, Path)) else RunStore()
+        else:
+            self.store = store
 
     def _collect(self) -> tuple[np.ndarray, np.ndarray, float]:
         """Run inference; return (outputs, targets, inference_seconds)."""
@@ -112,7 +126,13 @@ class Evaluator:
         df.index.name = "sample_id"
         return df
 
-    def run(self, tag: Optional[str] = None, notes: Optional[str] = None) -> EvalResult:
+    def run(
+        self,
+        tag: Optional[str] = None,
+        notes: Optional[str] = None,
+        dataset_id: Optional[str] = None,
+        persist: bool = True,
+    ) -> EvalResult:
         outputs, targets, inference_seconds = self._collect()
         n = int(len(targets))
 
@@ -131,4 +151,12 @@ class Evaluator:
             "inference_seconds": inference_seconds,
             "throughput_samples_per_sec": throughput,
         }
-        return EvalResult(summary=summary_series, per_sample=per_sample, meta=meta)
+        result = EvalResult(summary=summary_series, per_sample=per_sample, meta=meta)
+        result._store = self.store  # let result.compare_to() reach the store
+
+        if persist and self.store is not None:
+            from .store import _dataset_id
+
+            ds = dataset_id if dataset_id is not None else _dataset_id(self.dataloader)
+            self.store.save(result, dataset_id=ds)
+        return result
