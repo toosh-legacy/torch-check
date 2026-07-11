@@ -29,6 +29,25 @@ class EvalResult:
     def run_id(self) -> Optional[str]:
         return self.meta.get("run_id")
 
+    def compare_to(self, baseline_ref: str, threshold: float = 0.0):
+        """Compare this run against a stored baseline run.
+
+        Returns a :class:`~torchcheck.regression.RegressionReport`. Requires
+        this result to have been persisted (so both runs live in the store).
+        """
+        from .regression import RegressionComparator
+
+        if self._store is None:
+            raise RuntimeError(
+                "compare_to() needs a run store; this result was not persisted "
+                "(store=False or persist=False)"
+            )
+        if self.run_id is None:
+            raise RuntimeError("this result has no run_id; it was not persisted")
+        return RegressionComparator(self._store).compare(
+            baseline_ref, self.run_id, threshold=threshold
+        )
+
     @property
     def tag(self) -> Optional[str]:
         return self.meta.get("tag")

@@ -35,6 +35,9 @@ class Metric(ABC):
     """
 
     name: str
+    #: Whether a larger value means a better model. Regression metrics
+    #: (MSE/MAE) override this to False.
+    higher_is_better: bool = True
 
     @abstractmethod
     def compute(self, predictions: np.ndarray, targets: np.ndarray) -> float:
@@ -112,6 +115,7 @@ class F1(Metric):
 
 class MSE(Metric):
     name = "mse"
+    higher_is_better = False
 
     def compute(self, predictions, targets):
         return float(self.per_sample(predictions, targets).mean())
@@ -120,3 +124,13 @@ class MSE(Metric):
         predictions = np.asarray(predictions, dtype=np.float64).reshape(-1)
         targets = np.asarray(targets, dtype=np.float64).reshape(-1)
         return (predictions - targets) ** 2
+
+
+#: Metric names where a smaller value is better. Used by the regression
+#: comparator, which only has stored metric names (not Metric objects).
+LOWER_IS_BETTER = {"mse", "mae"}
+
+
+def higher_is_better(name: str) -> bool:
+    """Whether a larger value of the named metric is better (default True)."""
+    return name not in LOWER_IS_BETTER

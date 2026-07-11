@@ -7,6 +7,7 @@ import pandas as pd
 from . import metrics
 from .evaluator import Evaluator
 from .metrics import Metric
+from .regression import RegressionComparator, RegressionReport
 from .result import EvalResult
 from .store import RunStore
 
@@ -25,6 +26,8 @@ __all__ = [
     "Metric",
     "EvalResult",
     "RunStore",
+    "RegressionComparator",
+    "RegressionReport",
     "metrics",
     "history",
     "__version__",
