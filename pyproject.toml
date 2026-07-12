@@ -17,15 +17,12 @@ dependencies = [
     "numpy>=1.24",
     "pandas>=2.0",
     "pyarrow>=10.0",
-    "pyyaml>=6.0",
-    "typer>=0.12",
 ]
 
 [project.optional-dependencies]
+# scikit-learn: metric cross-checks in the tests + the digits dataset used by
+# the sample simulations.
 dev = ["pytest>=7.0", "scikit-learn>=1.2"]
-
-[project.scripts]
-torchcheck = "torchcheck.cli:app"
 
 [project.urls]
 Homepage = "https://github.com/tushaar/torchcheck"
@@ -35,3 +32,4 @@ packages = ["src/torchcheck"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: trains a real CNN; deselect with -m 'not slow'"]

@@ -15,7 +15,7 @@ class EvalResult:
     Attributes:
         summary: aggregate metric values (one scalar per metric).
         per_sample: one row per example with prediction, label and any
-            per-metric breakdowns. ``None`` until Milestone 2.
+            per-metric breakdowns.
         meta: run metadata (tag, notes, throughput, timing, ...).
     """
 
@@ -35,10 +35,10 @@ class EvalResult:
     def compare_to(self, baseline_ref: str, threshold: float = 0.0):
         """Compare this run against a stored baseline run.
 
-        Returns a :class:`~torchcheck.regression.RegressionReport`. Requires
+        Returns a :class:`~torchcheck.comparator.RegressionReport`. Requires
         this result to have been persisted (so both runs live in the store).
         """
-        from .regression import RegressionComparator
+        from .comparator import RegressionComparator
 
         if self._store is None:
             raise RuntimeError(

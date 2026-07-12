@@ -1,6 +1,8 @@
-"""Make ``src/torchcheck`` importable before the editable install (M6)."""
+"""Make ``src/torchcheck`` importable without installing the package first,
+so a plain ``pytest`` from the repo root just works."""
 
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))

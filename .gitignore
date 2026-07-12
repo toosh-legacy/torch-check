@@ -12,5 +12,4 @@ venv/
 .torchcheck/
 data/
 runs/
-examples/checkpoints/
 *.pt

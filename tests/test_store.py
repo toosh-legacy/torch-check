@@ -1,9 +1,8 @@
-"""Run store: SQLite metadata + parquet per-sample (Milestone 3)."""
+"""Run store: SQLite metadata + parquet per-sample."""
 
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-import torchcheck
 from torchcheck import Evaluator, RunStore, metrics
 
 

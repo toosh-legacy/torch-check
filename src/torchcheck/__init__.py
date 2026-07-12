@@ -1,13 +1,22 @@
-"""torchcheck: structured, reproducible evaluation for PyTorch models."""
+"""torchcheck: structured, reproducible evaluation for PyTorch models.
+
+One class per file:
+
+- :class:`~torchcheck.evaluator.Evaluator`   -- runs metrics over a model + dataloader
+- :class:`~torchcheck.result.EvalResult`     -- what a run gives you back
+- :class:`~torchcheck.store.RunStore`        -- saves runs so you can compare later
+- :class:`~torchcheck.comparator.RegressionComparator` -- baseline vs candidate
+- ``torchcheck.metrics``                     -- the metric classes
+"""
 
 from typing import Optional
 
 import pandas as pd
 
 from . import metrics
+from .comparator import RegressionComparator, RegressionReport
 from .evaluator import Evaluator
 from .metrics import Metric
-from .regression import RegressionComparator, RegressionReport
 from .result import EvalResult
 from .store import RunStore
 

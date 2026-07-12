@@ -1,9 +1,12 @@
-"""A small CNN on the sklearn handwritten-digits dataset (8x8, 10 classes).
+"""A small CNN on the scikit-learn handwritten-digits dataset.
 
-Real image data, bundled with scikit-learn, so it works fully offline with
-no torchvision. These functions are the code the eval configs reference:
-``build_model`` constructs the architecture and ``test_loader`` builds the
-held-out DataLoader.
+1,797 real 8x8 images, 10 classes -- an MNIST stand-in that ships inside
+scikit-learn, so this runs fully offline with no torchvision download. Swap
+``_tensors()`` for ``torchvision.datasets.MNIST`` and nothing else here has
+to change.
+
+This module owns the *model and the data*. The evaluation itself lives in
+``run_digits_sim.py``.
 """
 
 from __future__ import annotations
@@ -39,11 +42,6 @@ class DigitCNN(torch.nn.Module):
         return self.head(self.features(x))
 
 
-def build_model(n_classes: int = 10) -> DigitCNN:
-    """Config entry point: construct the model architecture."""
-    return DigitCNN(n_classes=n_classes)
-
-
 def _tensors(seed: int = 0):
     """Deterministic train/test split as (Xtr, ytr, Xte, yte) tensors."""
     digits = load_digits()
@@ -60,12 +58,33 @@ def _tensors(seed: int = 0):
     )
 
 
-def test_loader(batch_size: int = 256, seed: int = 0) -> DataLoader:
-    """Config entry point: held-out test DataLoader (deterministic)."""
+def train_loader(batch_size: int = 128, seed: int = 0) -> DataLoader:
+    Xtr, ytr, _, _ = _tensors(seed=seed)
+    return DataLoader(TensorDataset(Xtr, ytr), batch_size=batch_size, shuffle=True)
+
+
+def holdout_loader(batch_size: int = 256, seed: int = 0) -> DataLoader:
+    """Held-out test set. Not shuffled -- per-sample flip detection compares
+    the two runs row by row, so both runs must see the same order.
+
+    (Named ``holdout_`` rather than ``test_`` so pytest doesn't try to collect
+    it as a test case.)"""
     _, _, Xte, yte = _tensors(seed=seed)
     return DataLoader(TensorDataset(Xte, yte), batch_size=batch_size)
 
 
-def train_loader(batch_size: int = 128, seed: int = 0) -> DataLoader:
-    Xtr, ytr, _, _ = _tensors(seed=seed)
-    return DataLoader(TensorDataset(Xtr, ytr), batch_size=batch_size, shuffle=True)
+def train(epochs: int, seed: int = 0) -> DigitCNN:
+    """Train a DigitCNN for ``epochs`` passes. Fewer epochs -> worse model,
+    which is how the simulation manufactures a regression to detect."""
+    torch.manual_seed(seed)
+    model = DigitCNN()
+    loader = train_loader(seed=seed)
+    opt = torch.optim.Adam(model.parameters(), lr=1e-3)
+    loss_fn = torch.nn.CrossEntropyLoss()
+    model.train()
+    for _ in range(epochs):
+        for xb, yb in loader:
+            opt.zero_grad()
+            loss_fn(model(xb), yb).backward()
+            opt.step()
+    return model

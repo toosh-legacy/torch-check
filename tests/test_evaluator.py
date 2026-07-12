@@ -1,6 +1,6 @@
 """Evaluator loop behaviour."""
 
-import numpy as np
+import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -18,7 +18,7 @@ def _toy_setup(n=120, n_features=6, n_classes=3, seed=0):
 
 def test_run_returns_summary_series():
     model, loader = _toy_setup()
-    ev = Evaluator(model, loader, [metrics.Accuracy(), metrics.F1()], device="cpu")
+    ev = Evaluator(model, loader, [metrics.Accuracy(), metrics.F1()], device="cpu", store=False)
     result = ev.run(tag="t1")
     assert set(result.summary.index) == {"accuracy", "f1"}
     assert result.meta["n_samples"] == 120
@@ -28,15 +28,12 @@ def test_run_returns_summary_series():
 def test_run_sets_eval_mode_and_no_grad():
     model, loader = _toy_setup()
     model.train()  # deliberately leave in train mode
-    ev = Evaluator(model, loader, [metrics.Accuracy()], device="cpu")
+    ev = Evaluator(model, loader, [metrics.Accuracy()], device="cpu", store=False)
     ev.run()
     assert not model.training  # evaluator flipped it to eval
 
 
 def test_requires_at_least_one_metric():
     model, loader = _toy_setup()
-    try:
-        Evaluator(model, loader, [], device="cpu")
-        assert False, "expected ValueError"
-    except ValueError:
-        pass
+    with pytest.raises(ValueError):
+        Evaluator(model, loader, [], device="cpu", store=False)

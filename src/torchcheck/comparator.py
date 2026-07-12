@@ -8,7 +8,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from .metrics import higher_is_better
+from .metrics.base import higher_is_better
 
 # Column in a per-sample frame that encodes correctness (0/1). Accuracy's
 # per-sample output is exactly this.

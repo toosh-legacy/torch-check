@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from .metrics import Metric, _to_labels
+from .metrics.base import Metric, to_labels
 from .result import EvalResult
 
 if TYPE_CHECKING:
@@ -42,7 +42,7 @@ def _derive_predictions(outputs: np.ndarray) -> np.ndarray:
     """Human-facing prediction column: class label for classification,
     raw value for regression/single-output."""
     if outputs.ndim >= 2 and outputs.shape[-1] > 1:
-        return _to_labels(outputs)
+        return to_labels(outputs)
     return outputs.reshape(-1)
 
 

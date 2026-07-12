@@ -1,9 +1,9 @@
-"""Regression detection (Milestone 4)."""
+"""Regression detection: metric deltas + per-sample flips."""
 
 import pandas as pd
 import pytest
 
-from torchcheck.regression import _flip_table, _metric_table
+from torchcheck.comparator import _flip_table, _metric_table
 
 
 def test_metric_table_higher_is_better_regression():

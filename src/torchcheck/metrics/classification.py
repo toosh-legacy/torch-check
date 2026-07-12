@@ -1,35 +1,11 @@
-"""Pluggable metric definitions.
-
-A ``Metric`` receives the *raw model outputs* as ``predictions`` (logits for
-classification, continuous values for regression) plus integer/float
-``targets``, both as ``numpy`` arrays. Metrics interpret the outputs
-themselves -- e.g. classification metrics argmax internally -- so that
-metrics needing the full logits (TopK, ConfusionMatrix) work off the same
-collected array.
-
-Most metrics return a scalar from :meth:`compute`. A metric may instead
-return a richer object (e.g. :class:`ConfusionMatrix` returns a
-``DataFrame``); such metrics set ``scalar = False`` and the evaluator routes
-their output into ``EvalResult.artifacts`` rather than the summary Series.
-"""
+"""Classification metrics."""
 
 from __future__ import annotations
-
-from abc import ABC, abstractmethod
 
 import numpy as np
 import pandas as pd
 
-
-def _to_labels(predictions: np.ndarray) -> np.ndarray:
-    """Collapse (N, C) logits/probabilities to (N,) class labels.
-
-    1-D inputs are assumed to already be class labels and returned as-is.
-    """
-    predictions = np.asarray(predictions)
-    if predictions.ndim >= 2 and predictions.shape[-1] > 1:
-        return predictions.argmax(axis=-1)
-    return predictions.reshape(-1).astype(np.int64)
+from .base import Metric, to_labels
 
 
 def _prf_per_class(labels, targets, classes):
@@ -60,34 +36,6 @@ def _average(values, support, average):
     return float(np.sum(values * support) / total) if total else 0.0
 
 
-class Metric(ABC):
-    """Base class for all metrics.
-
-    Subclasses set a ``name`` (used as the column/key in results) and
-    implement :meth:`compute`. Override :meth:`per_sample` to expose a
-    per-example breakdown (e.g. per-sample correctness or squared error).
-    """
-
-    name: str
-    #: Whether a larger value means a better model. Regression error
-    #: metrics (MSE/MAE) override this to False.
-    higher_is_better: bool = True
-    #: Whether :meth:`compute` returns a scalar (True) or a richer artifact
-    #: like a DataFrame (False, e.g. ConfusionMatrix).
-    scalar: bool = True
-
-    @abstractmethod
-    def compute(self, predictions: np.ndarray, targets: np.ndarray):
-        """Return the aggregate value of this metric."""
-
-    def per_sample(self, predictions: np.ndarray, targets: np.ndarray) -> np.ndarray:
-        """Return one value per sample. Override where meaningful."""
-        raise NotImplementedError(
-            f"{type(self).__name__} does not provide a per-sample breakdown"
-        )
-
-
-# --------------------------------------------------------------- classification
 class Accuracy(Metric):
     name = "accuracy"
 
@@ -95,7 +43,7 @@ class Accuracy(Metric):
         return float(self.per_sample(predictions, targets).mean())
 
     def per_sample(self, predictions, targets):
-        labels = _to_labels(predictions)
+        labels = to_labels(predictions)
         targets = np.asarray(targets).reshape(-1)
         return (labels == targets).astype(np.float64)
 
@@ -111,7 +59,7 @@ class _AveragedClfMetric(Metric):
         self.average = average
 
     def compute(self, predictions, targets):
-        labels = _to_labels(predictions)
+        labels = to_labels(predictions)
         targets = np.asarray(targets).reshape(-1)
         if self.average == "micro":
             # single-label micro P == R == F1 == accuracy
@@ -171,7 +119,7 @@ class ConfusionMatrix(Metric):
     scalar = False
 
     def compute(self, predictions, targets):
-        labels = _to_labels(predictions)
+        labels = to_labels(predictions)
         targets = np.asarray(targets).reshape(-1)
         classes = np.unique(np.concatenate([labels, targets]))
         idx = {c: i for i, c in enumerate(classes)}
@@ -183,53 +131,3 @@ class ConfusionMatrix(Metric):
             index=pd.Index(classes, name="true"),
             columns=pd.Index(classes, name="pred"),
         )
-
-
-# ------------------------------------------------------------------- regression
-class MSE(Metric):
-    name = "mse"
-    higher_is_better = False
-
-    def compute(self, predictions, targets):
-        return float(self.per_sample(predictions, targets).mean())
-
-    def per_sample(self, predictions, targets):
-        predictions = np.asarray(predictions, dtype=np.float64).reshape(-1)
-        targets = np.asarray(targets, dtype=np.float64).reshape(-1)
-        return (predictions - targets) ** 2
-
-
-class MAE(Metric):
-    name = "mae"
-    higher_is_better = False
-
-    def compute(self, predictions, targets):
-        return float(self.per_sample(predictions, targets).mean())
-
-    def per_sample(self, predictions, targets):
-        predictions = np.asarray(predictions, dtype=np.float64).reshape(-1)
-        targets = np.asarray(targets, dtype=np.float64).reshape(-1)
-        return np.abs(predictions - targets)
-
-
-class R2(Metric):
-    """Coefficient of determination."""
-
-    name = "r2"
-
-    def compute(self, predictions, targets):
-        predictions = np.asarray(predictions, dtype=np.float64).reshape(-1)
-        targets = np.asarray(targets, dtype=np.float64).reshape(-1)
-        ss_res = np.sum((targets - predictions) ** 2)
-        ss_tot = np.sum((targets - targets.mean()) ** 2)
-        return float(1.0 - ss_res / ss_tot) if ss_tot > 0 else 0.0
-
-
-#: Metric names where a smaller value is better. Used by the regression
-#: comparator, which only has stored metric names (not Metric objects).
-LOWER_IS_BETTER = {"mse", "mae"}
-
-
-def higher_is_better(name: str) -> bool:
-    """Whether a larger value of the named metric is better (default True)."""
-    return name not in LOWER_IS_BETTER
